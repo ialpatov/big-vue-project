@@ -12,13 +12,14 @@
         </my-dialogue>
         <post-list :posts="sortedAndSearchedPosts" @remove="removePost" v-if="!isPostsLoading"></post-list>
         <div v-else class="mt-15">Идет загрузка...</div>
-        <div class="page__wrapper mt-15">
+        <div ref="observer" class="observer"></div>
+<!--        <div class="page__wrapper mt-15">
             <div v-for="pageNum in totalPages" :key="pageNum" class="page" :class="{
                 'current_page': pageNum === page
             }" @click="changePage(pageNum)">
                 {{ pageNum }}
             </div>
-        </div>
+        </div>-->
     </div>
 
 </template>
@@ -83,20 +84,47 @@
                     this.isPostsLoading = false
                 }
             },
-            changePage(pageNum) {
+            async loadMorePosts() {
+                try {
+                    this.page += 1
+                    const response = await axios.get('https://jsonplaceholder.typicode.com/posts', {
+                        params:  {
+                            _page: this.page,
+                            _limit: this.limit
+                        }
+                    })
+                    this.totalPages = Math.ceil(response.headers['x-total-count'] / this.limit)
+                    this.posts = [...this.posts, ...response.data]
+                } catch (e) {
+                    alert('Ошибка!')
+                } finally {
+                }
+            },
+            /*changePage(pageNum) {
                 this.page = pageNum
-            }
+            }*/
         },
         mounted() {
             this.fetchPosts()
+            const options = {
+                rootMargin: '0px',
+                threshold: 1.0
+            }
+            const callback = (entries, observer) => {
+                if(entries[0].isIntersecting && this.page < this.totalPages) {
+                    this.loadMorePosts()
+                }
+            };
+            const observer = new IntersectionObserver(callback, options);
+            observer.observe(this.$refs.observer)
         },
         watch: {
            /* selectedSort(newValue) {
                 this.posts.sort((post1, post2) => post1[newValue].localeCompare(post2[newValue]))
             }*/
-            page() {
+            /*page() {
                 this.fetchPosts()
-            }
+            }*/
         },
         computed: {
             sortedPosts() {
@@ -132,7 +160,7 @@
         margin-top: 15px;
     }
     
-    .page__wrapper{
+    /*.page__wrapper{
         display: flex;
         justify-content: center;
     }
@@ -150,6 +178,11 @@
     .current_page {
         border: 3px solid teal;
         background: antiquewhite;
+    }*/
+    
+    .observer {
+        height: 30px;
+        background: green;
     }
    
 </style>
